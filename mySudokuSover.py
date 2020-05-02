@@ -63,53 +63,53 @@ def square_distance(a,b):
 
 
 if __name__ == "__main__":
-    img_name = 'img.JPG'
+    img_name = 'test.jpg'
     img = cv.imread(img_name)
     img = scaleImg(img)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     gaus = cv.GaussianBlur(gray, (5,5), 0)
     thresh = cv.adaptiveThreshold(gaus, 255, 1, 1, 11, 2)
+    cv.imshow('thresh', thresh)
+    cv.waitKey(0)
     contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
     #get contour with largest area
     largest_area = max([cv.contourArea(c) for c in contours])
     outside_contour = [c for c in contours if cv.contourArea(c) == largest_area]
 
-    #create mask with contour
+
+    #approximate it to a polygonal shape and draw it on mask.
+    # found it here: https://pysource.com/2018/09/25/simple-shape-detection-opencv-with-python-3/
     mask = np.zeros((img.shape),np.uint8)
-    cv.drawContours(mask,outside_contour,0,(255,255,255),-1)
+    corners = cv.approxPolyDP(outside_contour[0],0.01*cv.arcLength(outside_contour[0],True),True)
+    cv.drawContours(mask,[corners],0,(255,255,255),-1)
+    cv.imshow('the mask with new contour', mask)
+    cv.waitKey(0)
+    corners=np.squeeze(corners)
+    min_x = min([c[0] for c in corners])
+    min_y = min([c[1] for c in corners])
+    max_x = max([c[0] for c in corners])
+    max_y = max([c[1] for c in corners])
+    new_corners = np.array([[max_x,min_y],[min_x,min_y],[min_x, max_y],[max_x, max_y]])
+
+
+    # https://www.programcreek.com/python/example/89422/cv2.warpPerspective
+    # https://www.learnopencv.com/image-alignment-feature-based-using-opencv-c-python/
+    h, status = cv.findHomography(corners, new_corners)
+    print(img.shape)
+    new_img = cv.warpPerspective(img, h, img.shape[:2])
+    cv.imshow('the img with new perspective', new_img)
+    cv.waitKey(0)
 
     #mask my sudoku grid
-    sudoku_masked = np.zeros_like(img)
-    sudoku_masked[mask==255] = img[mask==255]
+    #sudoku_masked = np.zeros_like(img)
+    #sudoku_masked[mask==255] = img[mask==255]
+    #cv.imshow('the mask with new contour', sudoku_masked)
+    #cv.waitKey(0)
 
 
 
-    blank = np.ones_like(img)*255
 
-    #detect 4 edges of the grid in the mask and draw them to the blank
-    edges = cv.Canny(mask,5,250,apertureSize = 3)
-    lines = cv.HoughLines(edges,1,np.pi/180,200)
-    for l in lines:
-        p1,p2 = getPoints(l)
-        cv.line(blank, p1, p2, (0,0,0),2)
-    cv.imshow(str(len(lines))+"lines detected from  mask and added to blank", blank)
-    cv.waitKey(0)
-
-    #getting corners of the grid (mask)
-    lines_as_coord = [getPoints(l) for l in lines]
-    corners = []
-    pairs_of_lines =  itertools.combinations(lines_as_coord, 2)
-    p_l = list(pairs_of_lines)[0]
-    print(p_l[0][0],p_l[1][0])
-    for pair_of_lines in itertools.combinations(lines_as_coord, 2):
-        intersection =  getIntersection(pair_of_lines)
-        if not intersection: continue
-        corners.append(intersection)
-        cv.circle(img, intersection, 2, (0, 255, 0), -1)
-    print(corners)
-    cv.imshow('image with four intersection points', img)
-    cv.waitKey(0)
 
     '''
     #skeletonize my masked with lines
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     print('yes',lines)
 
     for l in lines:
-        
+
         print(l)
         cv.line(sudoku_masked, p1, p2, (0,0,255),2)
     cv.imshow("images with lines", sudoku_masked)
