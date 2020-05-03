@@ -13,6 +13,7 @@ def scaleImg(img):
     width = int(img.shape[1]  - img.shape[1]%32)
     height = int(img.shape[0] - img.shape[0]%32)
     dim = (width, height)
+    dim = (960,960)
     img = cv.resize(img, dim, interpolation = cv.INTER_AREA)
     return img
 
@@ -61,6 +62,8 @@ def square_distance(a,b):
     sqrD = (a[0] - b[0])**2 + (a[1] - b[1])**2
     return  sqrD
 
+def findNumber(img):
+    return None
 
 if __name__ == "__main__":
     img_name = 'test.jpg'
@@ -96,11 +99,31 @@ if __name__ == "__main__":
     # https://www.programcreek.com/python/example/89422/cv2.warpPerspective
     # https://www.learnopencv.com/image-alignment-feature-based-using-opencv-c-python/
     h, status = cv.findHomography(corners, new_corners)
-    print(img.shape)
     new_img = cv.warpPerspective(img, h, img.shape[:2])
     cv.imshow('the img with new perspective', new_img)
     cv.waitKey(0)
 
+    # createing a grid of 9x9 cells in the area held between the four new corners
+    grid_width = max_x - min_x
+    grid_hight = max_y - min_y
+    x_array = np.arange(min_x, max_x, grid_width//9)
+    y_array = np.arange(min_y, max_y, grid_hight//9)
+
+    # print the points of the grid
+    for x in x_array:
+        for y in y_array:
+            cv.circle(new_img, (x,y), 0, (255,0,0), 5)
+    cv.imshow('the img with gridpoints', new_img)
+    cv.waitKey(0)
+
+    sudoku_numbers = np.empty((9,9))
+    # for each cell print image.
+    for j,y in enumerate(y_array[:-1]):
+        for i,x in enumerate(x_array[:-1]):
+            cell = new_img[y:y_array[j+1], x:x_array[i+1]]
+            sudoku_numbers[i][j] = findNumber(cell)
+
+    print(sudoku_numbers)
     #mask my sudoku grid
     #sudoku_masked = np.zeros_like(img)
     #sudoku_masked[mask==255] = img[mask==255]
