@@ -1,1 +1,3 @@
 spark.jar
+__pycache__/*
+
