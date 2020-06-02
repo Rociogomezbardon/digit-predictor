@@ -31,12 +31,11 @@ def find_cell(x_array, y_array ,x,y):
 
 
 if __name__ == "__main__":
-    img_name = 'sudoku_images/su.jpg'    #+input('image name\n')
-    #img_name = 'sudoku_images/1112.jpg'    #+input('image name\n')
+    #img_name = 'sudoku_images/su.jpg'    #+input('image name\n')
     #img_name = 'sudoku_images/1113.png'    #+input('image name\n')
     #img_name = 'sudoku_images/1114.JPG'    #+input('image name\n')
     #img_name = 'sudoku_images/IMG-0996.JPG'    #+input('image name\n')
-    #img_name = 'sudoku_images/IMG-0997.JPG'    #+input('image name\n')
+    img_name = 'sudoku_images/IMG-0997.JPG'    #+input('image name\n')
     #img_name = 'sudoku_images/IMG-0998.JPG'    #+input('image name\n')
     #img_name = 'sudoku_images/IMG-0999.JPG'    #+input('image name\n')
     #img_name = 'sudoku_images/IMG-1001.JPG'    #+input('image name\n')
@@ -56,19 +55,20 @@ if __name__ == "__main__":
     gaus = cv.GaussianBlur(gray, (5,5), 0)
     thresh = cv.adaptiveThreshold(gaus, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2)
     contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    cv.imshow('thresh', thresh)
-    cv.waitKey(0)
+    #cv.imshow('thresh', thresh)
+    #cv.waitKey(0)
     # get contour with largest area (which is sudoku grid outside border),
     # approximate as polygonal shape, and mask the image with the aproximated contour.
     largest_area = max([cv.contourArea(c) for c in contours])
     outside_contour = [c for c in contours if cv.contourArea(c) == largest_area][0]
     mask = np.zeros((img.shape),np.uint8)
     corners = cv.approxPolyDP(outside_contour,0.01*cv.arcLength(outside_contour,True),True)
+    
     cv.drawContours(mask,[corners],0,(255,255,255),-1)
     sudoku_masked = np.zeros_like(img)
     sudoku_masked[mask==255] = img[mask==255]
-    cv.imshow('sudoku_masked', sudoku_masked)
-    cv.waitKey(0)
+    #cv.imshow('sudoku_masked', sudoku_masked)
+    #cv.waitKey(0)
 
     ############## from grid corners to new grid corners after perspective rectification
     corners=np.squeeze(corners)
@@ -77,6 +77,7 @@ if __name__ == "__main__":
     bottom_right_index = np.argmax([sum(c) for c in corners])
     bottom_left_index = np.argmax([c[1]-c[0] for c in corners])
     top_right_index = np.argmax([c[0]-c[1] for c in corners])
+
 
     min_x = min([c[0] for c in corners])
     min_y = min([c[1] for c in corners])
@@ -91,11 +92,35 @@ if __name__ == "__main__":
     new_corners = np.array([index_to_new_corner[index] for index in range(len(corners))])
     ##############
 
+
     # create and apply homography, with current and new corners, to the required image
     h, status = cv.findHomography(corners, new_corners)
-    new_perspective = cv.warpPerspective(sudoku_masked, h, img.shape[:2])
-    cv.imshow('new_perspective', new_perspective)
-    cv.waitKey(0)
+    new_perspective = cv.warpPerspective(img, h, img.shape[:2])
+    #for i<min_x and i> max_x: new_perspective[i,j] = 255
+
+    #removing a slice of a pixels from each edge of the sudoku grid
+
+    a =  5# constant number added to the mins and maxs to avoide the edge of the sudoku grid.
+    min_x = min([c[0] for c in corners])+a
+    min_y = min([c[1] for c in corners])+a
+    max_x = max([c[0] for c in corners])-a
+    max_y = max([c[1] for c in corners])-a
+    
+    index_to_new_corner = {top_left_index:[min_x,min_y],\
+                           bottom_right_index:[max_x, max_y],\
+                           top_right_index:[max_x,min_y],\
+                           bottom_left_index:[min_x, max_y]}
+
+    new_corners = np.array([index_to_new_corner[index] for index in range(len(corners))])
+    
+    newmask = np.zeros((img.shape),np.uint8)
+    cv.drawContours(newmask,[new_corners],0,(255,255,255),-1)
+    new_sudoku_masked = np.zeros_like(img)
+    
+    new_sudoku_masked[newmask==255] = new_perspective[newmask==255]    
+    
+    #cv.imshow('sudoku_masked', new_sudoku_masked)
+    #cv.waitKey(0)
     # createing a grid of 9x9 cells in the area held between the four new corners
     grid_width = max_x - min_x
     grid_hight = max_y - min_y
@@ -104,7 +129,7 @@ if __name__ == "__main__":
     grid_area = grid_width*grid_hight
 
     #find and predict digits in the new image
-    gray = cv.cvtColor(new_perspective, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(new_sudoku_masked, cv.COLOR_BGR2GRAY)
     gaus = cv.GaussianBlur(gray, (5,5), 0).astype('uint8')
     thresh2 = cv.adaptiveThreshold(gaus, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2)
     contours, _ = cv.findContours(thresh2, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
@@ -132,15 +157,15 @@ if __name__ == "__main__":
                 digit = thresh2[y:y+h,x:x+w]
                 digit = pad_and_resize(digit,imsize)
                 predicted = predictor.predict([digit])
-                print('predicted', predicted[0])
+                #print('predicted', predicted[0])
                 cv.imshow('digit', digit)
                 cv.waitKey(0)
                 i,j = find_cell(rows, columns ,x,y)
-                sudoku_numbers[i][j] = int(predicted[0])
+                sudoku_numbers[i][j] = str(predicted[0])
                 asp_lines.append('value(cell({},{}),{}).'.format(i+1,j+1,predicted[0]))
 
 print(np.transpose(sudoku_numbers))
-#solution = ASP_interface.solve(asp_lines)
+solution = ASP_interface.solve(asp_lines)
 for e in solution:
     #i and j go from 0 to 8, but answer goes from 1 to 9
     [i,j,digit] = np.add( [int(c) for c in e if c.isdigit()] , [-1,-1,0] )

@@ -1,6 +1,5 @@
 import torch
 
-
 def train(model, train_loader,  epochs, device, learning_rate, momentum, best_model_path, first_epoch=1):
 
     loss_file = 'train/loss.csv'
@@ -39,5 +38,4 @@ def train(model, train_loader,  epochs, device, learning_rate, momentum, best_mo
         if(total_loss < best_loss):
             best_loss = total_loss
             torch.save(model.state_dict(), best_model_path)
-  
         

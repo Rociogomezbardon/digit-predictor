@@ -22,7 +22,7 @@ def pad_and_resize(digit,imsize):
     return digit
 
 def get_digit_pil_font(digit,font_path):
-    initial_im_size =  120
+    initial_im_size =  150
     img = Image.new('L', (initial_im_size, initial_im_size),0)
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype(font_path, 90)
@@ -85,24 +85,21 @@ def get_pil_font_images(imsize):
     labels_array = []
     fonts_dir = '/usr/share/fonts/truetype/'
     list_subfolders = [f for f in os.scandir(fonts_dir) if f.is_dir()]
-    myfontslist = ['malayalam','lato','adf','crosextra']
-    excludefonts = ['Chilanka-Regular.ttf', 'Karumbi.ttf']#they look like handwritting
-    fonts_paths = [os.path.join(subf.name,f)  for subf in list_subfolders for f in os.listdir(subf.path) if '.' in f and f not in excludefonts and subf.name in myfontslist ]
+    myfontslist = ['malayalam','lohit-telugu', 'fonts-telu-extra','lohit-kannada','fonts-yrsa-rasa','tlwg'] #,'lato','adf','crosextra']
+    excludefonts = ['Chilanka-Regular.ttf', 'Karumbi-Regular.ttf','lklug.ttf','NotoColorEmoji.ttf', 'Purisa-Oblique.ttf']#they look like handwritting
+    fonts_paths = [os.path.join(subf.name,f)  for subf in list_subfolders for f in os.listdir(subf.path) if ('.ttf' in f or '.otf' in f) and f not in excludefonts and subf.name in myfontslist ]
 
     for digit in range(1,10):
         for path in fonts_paths:
+            #print(path)
             img = get_digit_pil_font(str(digit),path)
             #if 'adf/AccanthisADFStdNo2-Italic.otf' in path:
             #    print(path)
             #    cv2.imshow('img', img)
             #    cv2.waitKey(0)
             img = pad_and_resize(img,imsize)
-            '''
-            if 'tlwg' in path:
-                print(path)
-                cv2.imshow('img', img)
-                cv2.waitKey(0)
-            '''
+            #cv2.imshow('img', img)
+            #cv2.waitKey(0)
             if img_digits_array is None: img_digits_array = img.reshape([1, imsize**2])
             else:img_digits_array = np.vstack((img_digits_array, img.reshape([1, imsize**2])))
             labels_array.append(digit)

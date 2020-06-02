@@ -9,7 +9,7 @@ global predictor
 def load_model(modelpath = 'digit_predictor/best_model.pth'):
     global predictor
     predictor = model.CNNet()
-    predictor.load_state_dict(torch.load(modelpath))
+    predictor.load_state_dict(torch.load(modelpath, map_location='cpu'))
     for parameter in predictor.parameters():
         parameter.requres_grad = False
     predictor.eval()
@@ -26,3 +26,5 @@ def predict(imgs):
     output = predictor(tensor_imgs).detach().numpy()
     prediction = [np.argmax(np.squeeze(o))+1 for o in output]
     return(prediction)
+
+
